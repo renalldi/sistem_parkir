@@ -31,7 +31,8 @@ class TokenStorage {
   }
 
   static Future<Map<String, String>> getAuthHeaders() async {
-    final token = await getToken(); // gunakan fungsi getToken yang sudah dibuat
+    final token = await getToken();
+    print("Token yang digunakan: $token"); 
 
     if (token == null) throw Exception("Token tidak ditemukan");
 

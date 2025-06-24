@@ -6,7 +6,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:sistem_parkir/models/parking_report_model.dart'; 
 
 class ReportService {
-  static const String baseUrl = "https://192.168.111.40:7211/api/Report";
+  static const String baseUrl = "https://fasparkbe-production.up.railway.app";
 
   /// 🔸 Kirim laporan kendaraan
   static Future<int?> submitReport({

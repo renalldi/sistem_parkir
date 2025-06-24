@@ -4,7 +4,7 @@ import '../services/auth_service.dart'; // import AuthService
 import '../models/lost_item_model.dart';
 
 class LostItemService {
-  static const String baseUrl = 'https://192.168.111.40:7211'; // ganti ke IP HP kalau test di device
+  static const String baseUrl = 'https://fasparkbe-production.up.railway.app'; 
 
   // ✅ Submit laporan kehilangan (dengan ambil token otomatis)
   static Future<bool> submitLostItemReport(LostItemReport report) async {

@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'token_storage.dart';
 
 class ParkingService {
-  static const String baseUrl = 'https://192.168.111.40:7211';
+  static const String baseUrl = 'https://fasparkbe-production.up.railway.app';
 
   Future<List<dynamic>> fetchParkingStatus() async {
     final response = await http.get(Uri.parse('$baseUrl/api/parkir/area-status'));

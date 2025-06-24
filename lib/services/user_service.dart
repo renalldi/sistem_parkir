@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'token_storage.dart';
 
 class UserService {
-  static const String baseUrl = 'https://192.168.111.40:7211'; // Sesuaikan backendmu
+  static const String baseUrl = 'https://fasparkbe-production.up.railway.app'; 
 
   // Register
   static Future<Map<String, dynamic>> register(String username, String password, String role) async {
@@ -26,8 +26,8 @@ class UserService {
       print('UserService Login Response Body: ${response.body}');
       
 
-      if (response.statusCode == 307) { // Secara eksplisit tangani 307
-        String? newLocation = response.headers['location']; // atau 'Location' (case-insensitive)
+      if (response.statusCode == 307) { 
+        String? newLocation = response.headers['location']; 
         print('Server mengarahkan ke: $newLocation');
         return {
           'success': false,
@@ -76,21 +76,31 @@ class UserService {
         }),
       );
 
+      print("Status: ${response.statusCode}");
+      print("Body: '${response.body}'");
+
+      if (response.body.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Respons kosong dari server (status: ${response.statusCode})',
+        };
+      }
+
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        if (data['token'] != null) {
-          final token = data['token'];
-          final role = data['role'] ?? data['user']?['role'] ?? 'User';
-          await TokenStorage.saveTokenAndRole(token: token, role: role);
-          print("UserService: Token saved: $token");
-          print("UserService: Role saved: $role");
-        }
+        final token = data['token'];
+        final role = data['role'] ?? data['user']?['role'] ?? 'User';
+
+        await TokenStorage.saveTokenAndRole(token: token, role: role);
+        print("Token saved: $token");
+        print("Role saved: $role");
+
         return {
           'success': true,
-          'user': data['user'], // misal user info { id, username, role }
-          'token': data['token'],
-          'role': data['role'],
+          'user': data['user'],
+          'token': token,
+          'role': role,
         };
       } else {
         return {
@@ -101,7 +111,7 @@ class UserService {
     } catch (e) {
       return {
         'success': false,
-        'message': 'Error: $e',
+        'message': 'Terjadi kesalahan: $e',
       };
     }
   }
@@ -159,18 +169,4 @@ class UserService {
       };
     }
   }
-
-  // hapus profil
-  // static Future<Map<String, dynamic>> deleteUser(String id) async {
-  //   final url = Uri.parse('$baseUrl/api/user/$id');
-  //   final response = await http.delete(url);
-
-  //   final data = jsonDecode(response.body);
-  //   if (response.statusCode == 200) {
-  //     return {'success': true, 'message': data['message']};
-  //   } else {
-  //     return {'success': false, 'message': data['message'] ?? 'Gagal hapus akun'};
-  //   }
-  // }
-
 }

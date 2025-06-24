@@ -38,6 +38,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text("FasPark"),
         backgroundColor: FigmaColors.primer,
+        automaticallyImplyLeading: false,
       ),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(

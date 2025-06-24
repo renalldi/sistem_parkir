@@ -3,11 +3,11 @@ import 'package:http/http.dart' as http;
 import 'token_storage.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://192.168.111.40:7211';
+  static const String baseUrl = 'https://fasparkbe-production.up.railway.app';
 
   // ✅ Login dan simpan token + role
   static Future<Map<String, dynamic>> login(String username, String password) async {
-    final url = Uri.parse('$baseUrl/api/Auth/login');
+    final url = Uri.parse('$baseUrl/api/auth/login');
 
     try {
       final response = await http.post(
@@ -19,6 +19,9 @@ class AuthService {
         }),
       );
 
+      print("Status: ${response.statusCode}");
+      print("Body: '${response.body}'");
+
       if (response.statusCode == 200) {
         final body = response.body.isNotEmpty ? jsonDecode(response.body) : null;
 
@@ -26,15 +29,13 @@ class AuthService {
           final token = body['token'];
           String? role;
 
-          // Coba ambil role dari body (jika backend kirim)
+          // Ambil role dari body
           if (body['role'] != null) {
             role = body['role'];
           } else {
-            // Atau decode dari token
             role = _extractRoleFromToken(token);
           }
 
-          // Simpan token dan role
           await TokenStorage.saveTokenAndRole(token: token, role: role ?? "Unknown");
 
           return {
@@ -49,10 +50,20 @@ class AuthService {
           };
         }
       } else {
-        final body = response.body.isNotEmpty ? jsonDecode(response.body) : null;
+        // 🔧 Tambahan: amankan parsing body error
+        String message = 'Login gagal.';
+        try {
+          if (response.body.isNotEmpty) {
+            final errorBody = jsonDecode(response.body);
+            message = errorBody['message'] ?? message;
+          }
+        } catch (e) {
+          print("Gagal parsing error response: $e");
+        }
+
         return {
           'success': false,
-          'message': body?['message'] ?? 'Login gagal. Cek username/password.',
+          'message': message,
         };
       }
     } catch (e) {

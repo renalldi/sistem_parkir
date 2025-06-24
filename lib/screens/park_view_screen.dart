@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../providers/park_provider.dart';
 import '../providers/auth_provider.dart';
+import 'package:sistem_parkir/themes/theme.dart';
 
 const bool isDevMode = true;
 
@@ -16,32 +17,32 @@ class ParkViewScreen extends StatefulWidget {
 }
 
 class _ParkViewScreenState extends State<ParkViewScreen> {
-  double studentLeft = 30;
-  double studentTop = 55;
-  double studentMiddle = 85;
-  double lecturer = 95;
-
   String? userParkedAt;
-  int? selectedAreaId; // id area yg sedang diparkir
-  bool isParked = false;
+  int? selectedAreaId;
 
   String _getNameFromAreaId(int id) {
     switch (id) {
-      case 1: return "Mahasiswa 1";
-      case 2: return "Mahasiswa 2";
-      case 3: return "Mahasiswa 3";
-      case 4: return "Dosen & Staff";
-      default: return "";
+      case 1:
+        return "Mahasiswa 1";
+      case 2:
+        return "Mahasiswa 2";
+      case 3:
+        return "Mahasiswa 3";
+      case 4:
+        return "Dosen & Staff";
+      default:
+        return "";
     }
   }
 
   @override
   void initState() {
     super.initState();
-     WidgetsBinding.instance.addPostFrameCallback((_) {
-    _loadStatusParkir();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadStatusParkir();
+      Provider.of<ParkingProvider>(context, listen: false).loadStatus();
     });
-  }   
+  }
 
   Future<void> _loadStatusParkir() async {
     final provider = Provider.of<ParkingProvider>(context, listen: false);
@@ -62,34 +63,11 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
       print("❌ Gagal cek status parkir: $e");
     }
   }
-  
+
   String getStatus(double percent) {
     if (percent > 90) return 'Penuh';
     if (percent > 50) return 'Hampir Penuh';
     return 'Parkir Tersedia';
-  }
-
-  Future<bool> isInsideFasilkomArea() async {
-    if (isDevMode) return true;
-
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10), // tambahkan timeout
-      );
-      double lat = position.latitude;
-      double lon = position.longitude;
-
-      const double fasilkomLat = -6.3628;
-      const double fasilkomLon = 106.8246;
-      const double maxDistanceInMeters = 100;
-
-      double distance = Geolocator.distanceBetween(lat, lon, fasilkomLat, fasilkomLon);
-      return distance <= maxDistanceInMeters;
-    } catch (e) {
-      print("❌ Error lokasi: $e");
-      return false;
-    }
   }
 
   Color getColorDashboard(double percent) {
@@ -103,6 +81,32 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
     if (percent > 90) return Colors.red;
     if (percent > 50) return Colors.orange;
     return Colors.green;
+  }
+
+  Future<bool> isInsideFasilkomArea() async {
+    if (isDevMode) return true;
+
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+      const fasilkomLat = -6.3628;
+      const fasilkomLon = 106.8246;
+      const double maxDistanceInMeters = 100;
+
+      double distance = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        fasilkomLat,
+        fasilkomLon,
+      );
+
+      return distance <= maxDistanceInMeters;
+    } catch (e) {
+      print("❌ Error lokasi: $e");
+      return false;
+    }
   }
 
   void handleTap(String name) async {
@@ -119,14 +123,11 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
     final areaId = areaMapping[name];
 
     if (userId == null || areaId == null) {
-      print("⚠️ User ID atau Area ID null");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("User belum login atau area salah.")),
       );
       return;
     }
-
-    print("👆 TAP → $name (Area ID: $areaId)");
 
     if (userParkedAt == name) {
       final keluar = await showDialog<bool>(
@@ -143,9 +144,7 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
 
       if (keluar == true) {
         try {
-          print("➡️ Keluar dari parkir...");
-          await provider.parkirKeluar(provider.riwayatId);
-          print("✅ Keluar sukses");
+          await provider.parkirKeluar(provider.riwayatId, areaId: areaId);
           setState(() => userParkedAt = null);
         } catch (e) {
           print("❌ Gagal keluar: $e");
@@ -165,21 +164,16 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
       );
 
       if (masuk == true) {
+        final allowed = await isInsideFasilkomArea();
+        if (!allowed) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Kamu tidak berada di area Fasilkom!")),
+          );
+          return;
+        }
+
         try {
-          print("📡 Mengecek lokasi...");
-          final allowed = await isInsideFasilkomArea();
-          print("📍 Di area Fasilkom? $allowed");
-
-          if (!allowed) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Kamu tidak berada di area Fasilkom!")),
-            );
-            return;
-          }
-
-          print("🚗 Mulai parkir masuk (userId: $userId, areaId: $areaId)...");
           final riwayatId = await provider.parkirMasuk(userId, areaId);
-          print("✅ Parkir sukses. Riwayat ID: $riwayatId");
           setState(() => userParkedAt = name);
         } catch (e) {
           print("❌ Gagal parkir masuk: $e");
@@ -187,7 +181,6 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
       }
     }
   }
-
 
   Widget parkingBlock({required String name, required double percent, required Widget child}) {
     return Material(
@@ -201,8 +194,49 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
     );
   }
 
+  Widget buildParkingCard(String title, int areaId) {
+    final provider = Provider.of<ParkingProvider>(context);
+    final occupancy = provider.areaOccupancy[areaId] ?? 0;
+    final capacity = provider.areaCapacity[areaId] ?? 1;
+    final percent = (occupancy / capacity) * 100;
+
+    return SizedBox(
+      width: 80,
+      height: 90,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: getColorDashboard(percent),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(title,
+                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 4),
+            Text("${percent.toInt()}%", style: const TextStyle(color: Colors.white)),
+            Text(getStatus(percent),
+                style: const TextStyle(color: Colors.white, fontSize: 10), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<ParkingProvider>(context);
+    final Map<int, int> occupancy = provider.areaOccupancy;
+    final Map<int, int> capacity = provider.areaCapacity;
+
+    double percent(int id) {
+      final cap = capacity[id] ?? 1;
+      final occ = occupancy[id] ?? 0;
+      return (occ / cap) * 100;
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F1D6),
       body: SafeArea(
@@ -218,10 +252,10 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  buildParkingCard("Mahasiswa 1", studentLeft),
-                  buildParkingCard("Mahasiswa 2", studentTop),
-                  buildParkingCard("Mahasiswa 3", studentMiddle),
-                  buildParkingCard("Dosen", lecturer),
+                  buildParkingCard("Mahasiswa 1", 1),
+                  buildParkingCard("Mahasiswa 2", 2),
+                  buildParkingCard("Mahasiswa 3", 3),
+                  buildParkingCard("Dosen", 4),
                 ],
               ),
             ),
@@ -245,7 +279,7 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
                           height: 30,
                           child: parkingBlock(
                             name: "Mahasiswa 2",
-                            percent: studentTop,
+                            percent: percent(2),
                             child: const Text("Mahasiswa 2", style: TextStyle(color: Colors.white)),
                           ),
                         ),
@@ -259,7 +293,7 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
                           quarterTurns: 3,
                           child: parkingBlock(
                             name: "Mahasiswa 1",
-                            percent: studentLeft,
+                            percent: percent(1),
                             child: const Text("Mahasiswa 1", style: TextStyle(color: Colors.white)),
                           ),
                         ),
@@ -273,7 +307,7 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
                           quarterTurns: 3,
                           child: parkingBlock(
                             name: "Mahasiswa 3",
-                            percent: studentMiddle,
+                            percent: percent(3),
                             child: const Text("Mahasiswa 3", style: TextStyle(color: Colors.white, fontSize: 10)),
                           ),
                         ),
@@ -287,7 +321,7 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
                           quarterTurns: 3,
                           child: parkingBlock(
                             name: "Dosen & Staff",
-                            percent: lecturer,
+                            percent: percent(4),
                             child: const Text("Dosen & Staff", style: TextStyle(color: Colors.white, fontSize: 10)),
                           ),
                         ),
@@ -325,39 +359,9 @@ class _ParkViewScreenState extends State<ParkViewScreen> {
             if (userParkedAt != null)
               Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text("Anda parkir di $userParkedAt", style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                child: Text("Anda parkir di $userParkedAt",
+                    style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildParkingCard(String title, double percent) {
-    return SizedBox(
-      width: 90,
-      height: 90,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: getColorDashboard(percent),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text("${percent.toInt()}%", style: const TextStyle(color: Colors.white)),
-            Text(
-              getStatus(percent),
-              style: const TextStyle(color: Colors.white, fontSize: 10),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       ),
