@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/lost_item_model.dart';
 
 class LostItemService {
-  static const String baseUrl = 'https://localhost:7211';
+  static const String baseUrl = 'https://192.168.111.40:7211';
 
   static Future<bool> submitLostItemReport(LostItemReport report, String token) async {
     final url = Uri.parse('$baseUrl/api/Record');

@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'package:sistem_parkir/themes/theme.dart';
+import 'dart:io' as io; // Untuk Android/iOS
+// import 'dart:html' as html; // Untuk Web
 import '../record/succes_submit_lost.dart';
 
 class FormLostPage extends StatefulWidget {
@@ -13,85 +16,118 @@ class FormLostPage extends StatefulWidget {
 
 class _FormLostPageState extends State<FormLostPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _namaController = TextEditingController();
-  final TextEditingController _noHpController = TextEditingController();
-  final TextEditingController _deskripsiController = TextEditingController();
-  final List<String> _areaOptions = ['Mahasiswa 1', 'Mahasiswa 2', 'Mahasiswa 3', 'Dosen & Staff'];
+  final _namaController = TextEditingController();
+  final _noHpController = TextEditingController();
+  final _deskripsiController = TextEditingController();
+
+  final List<String> _areaOptions = [
+    'Mahasiswa 1',
+    'Mahasiswa 2',
+    'Mahasiswa 3',
+    'Dosen & Staff',
+  ];
 
   String? _selectedArea;
   String? _jenisBarang;
-  File? _foto;
+  io.File? _fotoMobile;
+  Uint8List? _fotoWeb;
+  String? _webFileName;
   DateTime waktuLapor = DateTime.now();
 
   Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _foto = File(pickedFile.path);
-      });
+    if (kIsWeb) {
+      // final uploadInput = html.FileUploadInputElement();
+      // uploadInput.accept = 'image/*';
+      // uploadInput.click();
+
+      // uploadInput.onChange.listen((event) {
+      //   final file = uploadInput.files?.first;
+      //   if (file != null) {
+      //     final reader = html.FileReader();
+      //     reader.readAsArrayBuffer(file);
+      //     reader.onLoadEnd.listen((event) {
+      //       setState(() {
+      //         _fotoWeb = reader.result as Uint8List;
+      //         _webFileName = file.name;
+      //       });
+      //     });
+      //   }
+      // });
+    } else {
+      final pickedFile = await ImagePicker().pickImage(source: ImageSource.camera);
+      if (pickedFile != null) {
+        setState(() {
+          _fotoMobile = io.File(pickedFile.path);
+        });
+      }
     }
   }
 
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       if (_jenisBarang == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Jenis barang harus dipilih')),
-        );
+        _showSnackbar('Jenis barang harus dipilih');
         return;
       }
-
-      if (_foto == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Foto barang harus dipilih')),
-        );
-        return;
-      }
-
       if (_selectedArea == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Area lokasi harus dipilih')),
-        );
+        _showSnackbar('Area lokasi harus dipilih');
         return;
       }
-
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Konfirmasi'),
-          content: const Text('Apakah data yang Anda isi sudah benar?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context); // Tutup dialog
-                _navigateToSuccessPage(); // Pindah halaman
-              },
-              child: const Text('Ya, Submit'),
-            ),
-          ],
-        ),
-      );
+      if (!kIsWeb && _fotoMobile == null || kIsWeb && _fotoWeb == null) {
+        _showSnackbar('Foto barang harus dipilih');
+        return;
+      }
+      _showConfirmationDialog();
     }
   }
 
-  void _navigateToSuccessPage() {
+  void _showSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Konfirmasi'),
+        content: const Text('Apakah data yang Anda isi sudah benar?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _navigateToSuccessPage();
+            },
+            child: const Text('Ya, Submit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToSuccessPage() async {
     print('--- DATA FORM KEHILANGAN ---');
     print('Nama: ${_namaController.text}');
     print('No HP: ${_noHpController.text}');
     print('Jenis Barang: $_jenisBarang');
     print('Deskripsi: ${_deskripsiController.text.isNotEmpty ? _deskripsiController.text : 'Tidak diisi'}');
-    print('Foto: ${_foto?.path}');
     print('Area: $_selectedArea');
     print('Waktu Lapor: $waktuLapor');
+    print('Foto: ${kIsWeb ? _webFileName : _fotoMobile?.path}');
 
-    Navigator.push(
+    await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => LaporanBerhasilPage()),
+      MaterialPageRoute(
+        builder: (context) => LaporanBerhasilPage(
+          area: _selectedArea!,
+          deskripsi: _deskripsiController.text.isNotEmpty ? _deskripsiController.text : 'Tidak diisi',
+          waktu: waktuLapor.toString(),
+        ),
+      ),
     );
+
+    // ✅ Setelah berhasil ➜ kembali ke Home
+    Navigator.pop(context);
   }
 
   @override
@@ -104,125 +140,89 @@ class _FormLostPageState extends State<FormLostPage> {
         elevation: 0.5,
         leading: const BackButton(color: Colors.black),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: ListView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 12),
-              Text('Nama Pelapor', style: FigmaTextStyles.body),
-              const SizedBox(height: 4),
-              TextFormField(
+              _buildLabel('Nama Pelapor'),
+              _buildTextField(
                 controller: _namaController,
+                hint: 'contoh: Mingyu',
                 keyboardType: TextInputType.name,
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Wajib diisi';
                   if (!RegExp(r"^[a-zA-Z\s]+$").hasMatch(value)) return 'Hanya huruf dan spasi';
                   return null;
                 },
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: FigmaColors.field,
-                  hintText: 'contoh: Mingyu',
-                  hintStyle: FigmaTextStyles.hint,
-                  border: InputBorder.none,
-                ),
               ),
               const SizedBox(height: 16),
-              Text('No. Hp Pelapor', style: FigmaTextStyles.body),
-              const SizedBox(height: 4),
-              TextFormField(
+              _buildLabel('No. Hp Pelapor'),
+              _buildTextField(
                 controller: _noHpController,
+                hint: 'contoh: 081234567890',
                 keyboardType: TextInputType.phone,
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Wajib diisi';
                   if (!RegExp(r'^[0-9]{10,15}$').hasMatch(value)) return 'Nomor tidak valid';
                   return null;
                 },
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: FigmaColors.field,
-                  hintText: 'contoh: 081234567890',
-                  hintStyle: FigmaTextStyles.hint,
-                  border: InputBorder.none,
-                ),
               ),
               const SizedBox(height: 16),
-              Text('Jenis Barang', style: FigmaTextStyles.body),
-              const SizedBox(height: 4),
-              Container(
-                decoration: BoxDecoration(
-                  color: FigmaColors.field,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: DropdownButtonFormField<String>(
-                  value: _jenisBarang,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  hint: Text('Pilih jenis barang', style: FigmaTextStyles.hint),
-                  items: ['pribadi', 'milik orang lain']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (value) => setState(() => _jenisBarang = value),
-                  validator: (value) => value == null ? 'Wajib dipilih' : null,
-                ),
+              _buildLabel('Jenis Barang'),
+              _buildDropdown(
+                value: _jenisBarang,
+                hint: 'Pilih jenis barang',
+                items: ['pribadi', 'milik orang lain'],
+                onChanged: (value) => setState(() => _jenisBarang = value),
               ),
               const SizedBox(height: 16),
-              Text('Area Lokasi', style: FigmaTextStyles.body),
-              const SizedBox(height: 4),
-              Container(
-                decoration: BoxDecoration(
-                  color: FigmaColors.field,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: DropdownButtonFormField<String>(
-                  value: _selectedArea,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  hint: Text('Pilih area lokasi', style: FigmaTextStyles.hint),
-                  items: _areaOptions
-                      .map((area) => DropdownMenuItem(value: area, child: Text(area)))
-                      .toList(),
-                  onChanged: (value) => setState(() => _selectedArea = value),
-                  validator: (value) => value == null ? 'Wajib dipilih' : null,
-                ),
+              _buildLabel('Area Lokasi'),
+              _buildDropdown(
+                value: _selectedArea,
+                hint: 'Pilih area lokasi',
+                items: _areaOptions,
+                onChanged: (value) => setState(() => _selectedArea = value),
               ),
               const SizedBox(height: 16),
-              Text('Foto Barang', style: FigmaTextStyles.body),
-              const SizedBox(height: 4),
+              _buildLabel('Foto Barang'),
               GestureDetector(
                 onTap: _pickImage,
                 child: Container(
                   height: 50,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  alignment: Alignment.centerLeft,
                   decoration: BoxDecoration(
                     color: FigmaColors.field,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
-                    _foto != null ? '📷 Foto terpilih' : 'Pilih gambar (kamera/galeri)',
+                    (kIsWeb && _fotoWeb != null) || (!kIsWeb && _fotoMobile != null)
+                        ? '📷 Foto terpilih'
+                        : 'Pilih gambar (kamera/galeri)',
                     style: FigmaTextStyles.hint,
                   ),
                 ),
               ),
-              if (_foto != null) ...[
-                const SizedBox(height: 8),
+              const SizedBox(height: 8),
+              if (!kIsWeb && _fotoMobile != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: Image.file(_foto!, height: 120),
+                  child: Image.file(_fotoMobile!, height: 120),
+                )
+              else if (kIsWeb && _fotoWeb != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.memory(_fotoWeb!, height: 120),
                 ),
-              ],
               const SizedBox(height: 16),
-              Text('Deskripsi', style: FigmaTextStyles.body),
-              const SizedBox(height: 4),
+              _buildLabel('Deskripsi'),
               TextFormField(
                 controller: _deskripsiController,
+                maxLines: 3,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: FigmaColors.field,
@@ -230,16 +230,13 @@ class _FormLostPageState extends State<FormLostPage> {
                   hintStyle: FigmaTextStyles.hint,
                   border: InputBorder.none,
                 ),
-                maxLines: 3,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: FigmaColors.primer,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 onPressed: _submitForm,
                 child: Text('Submit', style: FigmaTextStyles.button),
@@ -247,6 +244,53 @@ class _FormLostPageState extends State<FormLostPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) => Text(text, style: FigmaTextStyles.body);
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required TextInputType keyboardType,
+    required String? Function(String?) validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      validator: validator,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: FigmaColors.field,
+        hintText: hint,
+        hintStyle: FigmaTextStyles.hint,
+        border: InputBorder.none,
+      ),
+    );
+  }
+
+  Widget _buildDropdown({
+    required String? value,
+    required String hint,
+    required List<String> items,
+    required Function(String?) onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: FigmaColors.field,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        hint: Text(hint, style: FigmaTextStyles.hint),
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+        ),
+        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        onChanged: onChanged,
+        validator: (val) => val == null ? 'Wajib dipilih' : null,
       ),
     );
   }

@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+// import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,7 +7,7 @@ import 'package:sistem_parkir/providers/report_provider.dart';
 
 import 'package:image_picker/image_picker.dart';
 // ignore: deprecated_member_use
-import 'dart:html' as html;
+// import 'dart:html' as html;
 
 class FormReportPage extends StatefulWidget {
   const FormReportPage({super.key});
@@ -31,29 +31,29 @@ class _FormReportPageState extends State<FormReportPage> {
 
     if (kIsWeb) {
       // === WEB ===
-      final uploadInput = html.FileUploadInputElement();
-      uploadInput.accept = 'image/*';
-      uploadInput.setAttribute('capture', 'environment');
-      uploadInput.click();
+      // final uploadInput = html.FileUploadInputElement();
+      // uploadInput.accept = 'image/*';
+      // uploadInput.setAttribute('capture', 'environment');
+      // uploadInput.click();
 
-      uploadInput.onChange.listen((event) {
-        final file = uploadInput.files?.first;
-        if (file != null) {
-          final reader = html.FileReader();
-          reader.readAsArrayBuffer(file);
-          reader.onLoadEnd.listen((event) {
-            final bytes = reader.result as Uint8List;
-            provider.updateGambar(bytes, file.name);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Gambar berhasil diambil')),
-            );
-          });
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Gagal mengambil gambar')),
-          );
-        }
-      });
+      // uploadInput.onChange.listen((event) {
+      //   final file = uploadInput.files?.first;
+      //   if (file != null) {
+      //     final reader = html.FileReader();
+      //     reader.readAsArrayBuffer(file);
+      //     reader.onLoadEnd.listen((event) {
+      //       final bytes = reader.result as Uint8List;
+      //       provider.updateGambar(bytes, file.name);
+      //       ScaffoldMessenger.of(context).showSnackBar(
+      //         const SnackBar(content: Text('Gambar berhasil diambil')),
+      //       );
+      //     });
+      //   } else {
+      //     ScaffoldMessenger.of(context).showSnackBar(
+      //       const SnackBar(content: Text('Gagal mengambil gambar')),
+      //     );
+      //   }
+      // });
     } else {
       // === ANDROID / IOS ===
       final picker = ImagePicker();
@@ -68,7 +68,7 @@ class _FormReportPageState extends State<FormReportPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Gagal mengambil gambar')),
         );
-      }
+      } 
     }
   }
 

@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'token_storage.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://localhost:7211';
+  static const String baseUrl = 'https://192.168.111.40:7211';
 
   // ✅ Login dan simpan token + role
   static Future<Map<String, dynamic>> login(String username, String password) async {

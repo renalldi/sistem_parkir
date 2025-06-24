@@ -5,10 +5,11 @@ import 'package:sistem_parkir/screens/report/form_lost.dart';
 import 'package:sistem_parkir/screens/home/account_page.dart';
 import 'package:sistem_parkir/themes/theme.dart';
 import 'package:sistem_parkir/services/lost_item_service.dart';
-import 'package:sistem_parkir/services/parking_report_service.dart';
+// import 'package:sistem_parkir/services/parking_report_service.dart';
 import 'package:sistem_parkir/models/lost_item_model.dart';
 import 'package:sistem_parkir/models/parking_report_model.dart';
 import 'package:sistem_parkir/services/report_service.dart';
+import 'package:sistem_parkir/services/token_storage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -55,10 +56,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// ===============================
-// Home Menu
-// ===============================
-
 class _HomeMenu extends StatefulWidget {
   const _HomeMenu();
 
@@ -73,31 +70,49 @@ class _HomeMenuState extends State<_HomeMenu> {
   @override
   void initState() {
     super.initState();
-    _lostItemsFuture = LostItemService().getAllLostItem().then((items) => items.reversed.toList());
-    _vehicleReportsFuture = ParkingReportService().getAllReports().then((items) => items.reversed.toList());
+    _loadData();
+  }
+
+  void _loadData() {
+    TokenStorage.getToken().then((token) {
+      print("🔥 Token aktif: $token");
+    });
+
+    setState(() {
+      _lostItemsFuture = LostItemService().getAllLostItem().then((items) => items.reversed.toList());
+      _vehicleReportsFuture = ReportService().getAllReport().then((items) => items.reversed.toList());
+    });
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return "-";
+    return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 24),
-          _buildLostItemsTable(),
-          const SizedBox(height: 24),
-          _buildVehicleReportsTable(),
-          const SizedBox(height: 24),
-          _buildFormMenu(),
-          const SizedBox(height: 24),
-        ],
+    return RefreshIndicator(
+      onRefresh: () async => _loadData(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 24),
+            _buildLostItemsTable(),
+            const SizedBox(height: 24),
+            _buildVehicleReportsTable(),
+            const SizedBox(height: 24),
+            _buildFormMenu(),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
 
-  // ======= HEADER =======
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
@@ -128,14 +143,18 @@ class _HomeMenuState extends State<_HomeMenu> {
     );
   }
 
-  // ======= TABEL KEHILANGAN =======
   Widget _buildLostItemsTable() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Riwayat Kehilangan Barang", style: TextStyle(fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text("Riwayat Kehilangan Barang", style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
           const SizedBox(height: 8),
           FutureBuilder<List<LostItemReport>>(
             future: _lostItemsFuture,
@@ -166,13 +185,12 @@ class _HomeMenuState extends State<_HomeMenu> {
                       DataCell(Text(item.namaPelapor)),
                       DataCell(Text(item.jenisBarang)),
                       DataCell(Text(item.area)),
-                      DataCell(Text(item.tanggalLapor?.toString() ?? "-")),
+                      DataCell(Text(_formatDate(item.tanggalLapor))),
                       DataCell(
                         IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () {
                             setState(() => items.removeAt(index));
-                            // TODO: panggil API hapus jika perlu
                           },
                         ),
                       ),
@@ -187,7 +205,6 @@ class _HomeMenuState extends State<_HomeMenu> {
     );
   }
 
-  // ======= TABEL LAPORAN KENDARAAN =======
   Widget _buildVehicleReportsTable() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -253,7 +270,6 @@ class _HomeMenuState extends State<_HomeMenu> {
     );
   }
 
-  // ======= MENU FORM =======
   Widget _buildFormMenu() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -273,18 +289,22 @@ class _HomeMenuState extends State<_HomeMenu> {
               _MenuCard(
                 icon: Icons.search,
                 label: "Form Kehilangan Barang",
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const FormLostPage()),
-                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FormLostPage()),
+                  ).then((_) => _loadData());
+                },
               ),
               _MenuCard(
                 icon: Icons.report,
                 label: "Form Pelaporan Kendaraan",
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => FormReportPage()),
-                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => FormReportPage()),
+                  ).then((_) => _loadData());
+                },
               ),
             ],
           ),
@@ -293,10 +313,6 @@ class _HomeMenuState extends State<_HomeMenu> {
     );
   }
 }
-
-// ===============================
-// Reusable Menu Card
-// ===============================
 
 class _MenuCard extends StatelessWidget {
   final IconData icon;

@@ -6,7 +6,7 @@ import 'package:http_parser/http_parser.dart' as http_parser;
 
   class ParkingReportService {
   static const String baseUrl =
-      String.fromEnvironment('BASE_URL', defaultValue: 'https://localhost:7211');
+      String.fromEnvironment('BASE_URL', defaultValue: 'https://192.168.111.40:7211');
 
 
   /// Ambil record berdasarkan ID

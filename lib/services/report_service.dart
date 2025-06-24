@@ -3,10 +3,10 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:sistem_parkir/models/parking_report_model.dart'; // Pastikan path ini sesuai
+import 'package:sistem_parkir/models/parking_report_model.dart'; 
 
 class ReportService {
-  static const String baseUrl = "https://localhost:7211/api/Report";
+  static const String baseUrl = "https://192.168.111.40:7211/api/Report";
 
   /// 🔸 Kirim laporan kendaraan
   static Future<int?> submitReport({

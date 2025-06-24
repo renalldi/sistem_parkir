@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'token_storage.dart';
 
 class UserService {
-  static const String baseUrl = 'https://localhost:7211'; // Sesuaikan backendmu
+  static const String baseUrl = 'https://192.168.111.40:7211'; // Sesuaikan backendmu
 
   // Register
   static Future<Map<String, dynamic>> register(String username, String password, String role) async {
